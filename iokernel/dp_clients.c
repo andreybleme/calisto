@@ -13,6 +13,8 @@
 #include "defs.h"
 
 #define MAC_TO_PROC_ENTRIES	128
+#define HASH_TO_CORE_ENTRIES 500
+#define RSS_HASH_LEN 52
 
 static struct lrpc_chan_out lrpc_data_to_control;
 static struct lrpc_chan_in lrpc_control_to_data;
@@ -23,6 +25,7 @@ static struct lrpc_chan_in lrpc_control_to_data;
 static void dp_clients_add_client(struct proc *p)
 {
 	int ret;
+	struct rte_hash_parameters hash_params = { 0 };
 
 	p->kill = false;
 	dp.clients[dp.nr_clients++] = p;
@@ -30,6 +33,18 @@ static void dp_clients_add_client(struct proc *p)
 	ret = rte_hash_add_key_data(dp.mac_to_proc, &p->mac.addr[0], p);
 	if (ret < 0)
 		log_err("dp_clients: failed to add MAC to hash table in add_client");
+
+	/* initialize the hash table for mapping RSS hashes to CPU cores */
+	hash_params.name = "hash_to_core_hash_table";
+	hash_params.entries = HASH_TO_CORE_ENTRIES;
+	hash_params.key_len = sizeof(uint32_t);
+	hash_params.hash_func = rte_jhash;
+	hash_params.hash_func_init_val = 0;
+	dp.hash_to_core = rte_hash_create(&hash_params);
+	if (dp.hash_to_core == NULL) {
+		log_err("dp.hash_to_core: failed to create HASH to CORE hash table");
+		return -1;
+	}
 
 #ifdef MLX
 	p->mr = mlx_reg_mem(dp.port, p->region.base, p->region.len, &p->lkey);

@@ -206,6 +206,7 @@ struct dataplane {
 	struct proc		*clients[IOKERNEL_MAX_PROC];
 	int			nr_clients;
 	struct rte_hash		*mac_to_proc;
+	struct rte_hash		*hash_to_core;
 };
 
 extern struct dataplane dp;
@@ -302,7 +303,7 @@ extern void cores_init_proc(struct proc *p);
 extern void cores_free_proc(struct proc *p);
 extern int cores_pin_thread(pid_t tid, int core);
 extern bool cores_park_kthread(struct thread *t, bool force);
-extern struct thread *cores_add_core(struct proc *p);
+extern struct thread *cores_add_core(struct proc *p, int affinity_core);
 extern void cores_adjust_assignments();
 extern void proc_set_overloaded(struct proc *p);
 extern unsigned int get_nr_avail_cores(void);
