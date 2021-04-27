@@ -18,6 +18,7 @@
 #define RX_PREFETCH_STRIDE 2
 
 static struct shm_region ingress_mbuf_region;
+int affinity_core = 0;
 
 /*
  * Prepend rx_net_hdr preamble to ingress packets.
@@ -57,13 +58,35 @@ static struct rx_net_hdr *rx_prepend_rx_preamble(struct rte_mbuf *buf)
 bool rx_send_to_runtime(struct proc *p, uint32_t hash, uint64_t cmd,
 			unsigned long payload)
 {
+	int retl;
+	int reta;
 	struct thread *th;
+	int assigned_core;
+
+
+	/*
+	* If: current 5-tuple RSS hash has no affinity core assigned, assign it in Hash Table
+	* Else: use the assigned affinity core
+	*/
+	retl = rte_hash_lookup(dp.hash_to_core, (const void *)&hash);
+	if (retl < 0) {
+		if (affinity_core == 11) {
+			affinity_core = 1;
+		}
+		reta = rte_hash_add_key_data(dp.hash_to_core, (const void *)&hash, affinity_core);
+		assigned_core = affinity_core;
+		affinity_core++;
+		if (reta < 0)
+			log_err("rx: failed to add HASH to hash table in rx_send_to_runtime");
+	} else {
+		assigned_core = retl;
+	}
 
 	if (likely(p->active_thread_count > 0)) {
 		/* load balance between active threads */
 		th = p->active_threads[hash % p->active_thread_count];
 	} else if (p->sched_cfg.guaranteed_cores > 0 || get_nr_avail_cores() > 0) {
-		th = cores_add_core(p);
+		th = cores_add_core(p, assigned_core);
 		if (unlikely(!th))
 			return false;
 	} else {

@@ -353,12 +353,18 @@ static struct thread *pick_thread_for_proc(struct proc *p, int core)
  *
  * Returns an available core if one exists, or else a core to be preempted.
  */
-static int pick_core_for_proc(struct proc *p)
+static int pick_core_for_proc(struct proc *p, int affinity_core)
 {
 	int buddy_core, core;
 	int i;
 	struct thread *t;
 	struct proc *buddy_proc, *core_proc;
+
+	/* if the flow affinity core is available, return it */
+	if (affinity_core >= 0) {
+		if (core_available(affinity_core))
+			return affinity_core;
+	}
 
 #ifndef CORES_NOHT
 	/* try to allocate a hyperthread pair core */
@@ -567,8 +573,9 @@ bool cores_park_kthread(struct thread *th, bool force)
  * function immediately wakes a kthread on it. Otherwise, a kthread will be
  * woken on the core once the preempted kthread parks.
  * @p: the process to allocate a core to
+ * int: the affinity core suggested
  */
-struct thread *cores_add_core(struct proc *p)
+struct thread *cores_add_core(struct proc *p, int affinity_core)
 {
 	int core;
 	struct thread *th, *th_current;
@@ -581,7 +588,7 @@ struct thread *cores_add_core(struct proc *p)
 	p->pending_timer = false;
 
 	/* pick a core to add and a thread to run on it */
-	core = pick_core_for_proc(p);
+	core = pick_core_for_proc(p, affinity_core);
 	th = pick_thread_for_proc(p, core);
 	if (!th) {
 		log_err("cores: proc already has max allowed kthreads (%d)",
@@ -667,7 +674,7 @@ void cores_init_proc(struct proc *p)
 	p->launched = true;
 
 	/* wake the first kthread so the runtime can run the main_fn */
-	cores_add_core(p);
+	cores_add_core(p, -1);
 }
 
 /*
@@ -758,7 +765,7 @@ void cores_adjust_assignments(void)
 
 		/* the proc is congested, add cores if possible */
 		if (p->active_thread_count < p->sched_cfg.guaranteed_cores)
-			cores_add_core(p);
+			cores_add_core(p, -1);
 		else
 			proc_set_overloaded(p);
 	}
@@ -768,7 +775,7 @@ void cores_adjust_assignments(void)
 		if (nr_avail_cores == 0)
 			break;
 
-		cores_add_core(p);
+		cores_add_core(p, -1);
 	}
 }
 
