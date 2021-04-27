@@ -1,17 +1,20 @@
-# Shenango
+# Calisto
 
-Shenango is a system that enables servers in datacenters to
-simultaneously provide low tail latency and high CPU efficiency, by
+Calisto is a system that enables servers in datacenters to
+ provide low tail latency and high CPU efficiency, by
 rapidly reallocating cores across applications, at timescales as small
-as every 5 microseconds.
+as every 5 microseconds while keeping packet flow affinity when assigning
+packets to cores.
 
-## How to Run Shenango
+This is a [Shenango](https://github.com/shenango/shenango) fork.
 
-1) Clone the Shenango repository.
+## How to Run Calisto
+
+1) Clone the Calisto repository.
 
 ```
-git clone https://github.com/abelay/shenango
-cd shenango
+git clone https://github.com/andreybleme/calisto
+cd calisto
 ```
 
 2) Setup DPDK and build the IOKernel and Shenango runtime.
@@ -55,7 +58,7 @@ sudo ./iokerneld
 
 ## Supported Platforms
 
-This code has been tested most thoroughly on Ubuntu 18.04, with kernel
+This has been tested most thoroughly on Ubuntu 18.04, with kernel
 4.15.0. It has been tested with Intel 82599ES 10 Gbits/s NICs and
 Mellanox ConnectX-3 Pro 10 Gbits/s NICs. If you use Mellanox NICs, you
 should install the Mellanox OFED as described in [DPDK's
