@@ -1,0 +1,9 @@
+*.d
+*.o
+*.a
+[._]*.sw[a-p]
+iokerneld
+iokerneld-noht
+*~
+.cproject
+.project
